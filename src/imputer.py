@@ -8,14 +8,13 @@ class Imputer:
         self.data = data
         self.features_methods = features_methods
 
-    def impute(self):
+    def impute(self) -> DataFrame:
         for feature, method in self.features_methods.items():
-            # check boxplots
-            # interpolate by behaviour + checking boxplots boundaries
             quartiles = self.data.groupby('TrialType')[feature].quantile([0.25, 0.75]).unstack()
 
             for idx, group in self.data.groupby('SDAN'):
-                # interpolated = group[feature].interpolate(method=method, limit_direction='both')
+                # original_indices = group.index.copy()
+                # group = group.reset_index(drop=True)
                 original = np.array(group[feature])
                 x = group.index[~group[feature].isna()]
                 y = group[feature].dropna()
@@ -32,3 +31,6 @@ class Imputer:
                             new_values[nan_idx] = q3
                     group[feature] = new_values
                     self.data.update(group)
+                    # self.data.loc[original_indices, feature] = new_values
+
+        return self.data
