@@ -57,27 +57,6 @@ class DataLoader:
                     name, df = handler_func(file_path)
                     df_dict[name] = df
 
-        # for entry in os.listdir(self.input_folder):
-        #     full_path = os.path.join(self.input_folder, entry)
-
-        #     if os.path.isdir(full_path):
-        #         if entry == 'clinical':
-        #             for file in os.listdir(full_path):
-        #                 file_path = os.path.join(full_path, file)
-        #                 name, df = self.handle_demographic(file_path)
-        #                 df_dict[name] = df
-        #         #defrantate between cog and phy.
-        #         elif entry == 'tasks': #handle cog
-        #             for file in os.listdir(full_path):
-        #                 file_path = os.path.join(full_path, file)
-        #                 name, df = self.handle_cog(file_path)
-        #                 df_dict[name] = df
-        #         elif entry == 'physio': #handle physio
-        #             for file in os.listdir(full_path):
-        #                 file_path = os.path.join(full_path, file)
-        #                 name, df = self.handle_cog(file_path)
-        #                 df_dict[name] = df
-                # else: #in case we have more folders
         return df_dict
     
     def handle_demographic(self, file_name):
