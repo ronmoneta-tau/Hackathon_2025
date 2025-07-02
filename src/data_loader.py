@@ -23,6 +23,7 @@ class DataLoader:
         """
         self.input_folder = Path(input_folder)
         self.first_task_made = None
+        self.feature_map = None
         self.clinic_data = {}
         self.task_data = {}
         self.physio_data = {}
@@ -54,7 +55,10 @@ class DataLoader:
             item_path = os.path.join(self.input_folder, item)
             if os.path.isfile(item_path) and item.lower().endswith(('.xls', '.xlsx')):
                 self.first_task_made = pd.read_excel(item_path)
-                break
+            elif os.path.isfile(item_path) and item.lower().endswith(('.csv')):
+                feature_df = pd.read_csv(item_path, header=None)  # Read CSV without header
+                self.feature_map = pd.Series(feature_df[1].values, index=feature_df[0].values).to_dict()
+                # check if value isn't a real method, if not chose default
 
         for entry in os.listdir(self.input_folder):
             full_path = os.path.join(self.input_folder, entry)
@@ -66,7 +70,7 @@ class DataLoader:
                     name, df = handler_func(file_path)
                     df_dict[name] = df
 
-        return df_dict
+        return df_dict, self.feature_map
     
     def handle_demographic(self, file_name):
         """
@@ -90,8 +94,8 @@ class DataLoader:
         # df.columns = ['_'.join([str(i) for i in col if str(i) != 'nan']).strip() for col in df.columns] #changes the MultiIndex into a single-level index
         df = self.flatten_df(df)
         return "clinical", df
-
-    def flatten_df(self, df):
+    @staticmethod  
+    def flatten_df(df):
         df.columns = [
             col[0].replace(' ', '-') if ('Unnamed' in str(col[1]) or '=' in str(col[1]))
             else f'{col[0]}_{col[1]}'.replace(' ', '-')
@@ -131,10 +135,9 @@ class DataLoader:
         df_target = df_target.merge(cond_map, on=participant_col, how='left')
 
         return df_target
-
-
-
-    def gets_task_name(self, file_name):
+    
+    @staticmethod
+    def gets_task_name(file_name):
         "from file called 'stop_it_with_code_book, extract 'stop_it'"
         base_name = file_name.split('/')[-1]
         return base_name.split('_with_code_book')[0]
@@ -171,10 +174,9 @@ class DataLoader:
 
         return filtered_df
 
-
-    def gets_measurement_name(self, file_name):
+    @staticmethod
+    def gets_measurement_name(file_name):
         "from file called 'statistics_hr', extract 'hr'"
         base_name = file_name.split('/')[-1]
         base_name = base_name.replace("statistics_", "").upper()
         return base_name.split(".")[0]
-
