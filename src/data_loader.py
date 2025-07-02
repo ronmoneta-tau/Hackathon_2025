@@ -22,10 +22,12 @@ class DataLoader:
             Input data path 
         """
         self.input_folder = Path(input_folder)
+        self.first_task_made = None
         self.clinic_data = {}
         self.task_data = {}
         self.physio_data = {}
 
+# need to load the order of tasks and add it to the cog pd. 
     def get_dataframe(self):
         """
         This function gets a folder path, loads the file and than handles each file
@@ -46,6 +48,13 @@ class DataLoader:
             'tasks': self.handle_cog,
             'physio': self.handle_physio  # Assuming physio uses same handler as tasks
         }
+
+        # find sxcel file and save it
+        for item in os.listdir(self.input_folder):
+            item_path = os.path.join(self.input_folder, item)
+            if os.path.isfile(item_path) and item.lower().endswith(('.xls', '.xlsx')):
+                self.first_task_made = pd.read_excel(item_path)
+                break
 
         for entry in os.listdir(self.input_folder):
             full_path = os.path.join(self.input_folder, entry)
@@ -96,28 +105,76 @@ class DataLoader:
         excel_file = pd.ExcelFile(file_name)
         sheet_names = excel_file.sheet_names 
         df = pd.read_excel(file_name, sheet_name=sheet_names[0])
+        #change the name of the first column:
+        df.rename(columns={df.columns[0]: 'ID'}, inplace=True)
         name = self.gets_task_name(file_name)
+
+        # add column of first and second
+        df = self.map_condition_column(df, name)
+        
         return name, df
     
+    def map_condition_column(self, df_target, target):
+        condition_col = 'CONDITION'
+        participant_col = 'ID'  # Update this if your ID column has a different name
+
+        # Step 1: Get mapping per participant from first_task_made
+        cond_map = self.first_task_made[[participant_col, condition_col]].drop_duplicates()
+
+        # Step 2: Map 'Tap It'/'Stop It' to 'First'/'Second'
+        cond_map[condition_col] = cond_map[condition_col].map(
+            lambda x: 'First' if x == target else 'Second'
+        )
+
+        # Step 3: Merge this info into df_target
+        df_target = df_target.copy()
+        df_target = df_target.merge(cond_map, on=participant_col, how='left')
+
+        return df_target
+
+
 
     def gets_task_name(self, file_name):
         "from file called 'stop_it_with_code_book, extract 'stop_it'"
-    def extarct_sheet(self, file_name, num=0):
-        "gets the file and extracts only the sheet the user defines"
+        base_name = file_name.split('/')[-1]
+        return base_name.split('_with_code_book')[0]
     
     def handle_physio(self, file_name):
         "Gets a file, opens as xslx - extarct 4 sheets and mergers them as one table and adda a column."
         "returns name and dataframe"
-        return "x", None
+        df_list = []
+        excel_file = pd.ExcelFile(file_name)
+        sheet_names = excel_file.sheet_names 
+        for sheet in sheet_names:
+            sheet_df = pd.read_excel(file_name, sheet_name=sheet)
+            sheet_df['sheet_name'] = sheet
+            df_list.append(sheet_df)
+        df = pd.concat(df_list, ignore_index=True)
+        df.rename(columns={df.columns[0]: 'ID'}, inplace=True)
+
+        name = self.gets_measurement_name(file_name)
+
+        filter_df = self.filter_participants_in_physio(df, len(sheet_names), "removed_" + name)
+
+        return name, filter_df
+
+    def filter_participants_in_physio(self, df, num, file_name, participant_col='ID'):
+        """
+        """
+        counts = df[participant_col].value_counts()
+        valid_participants = counts[counts == num].index
+        removed_participants = counts[counts != num].index.tolist()
+        filtered_df = df[df[participant_col].isin(valid_participants)].copy()
+        csv_path = os.path.join(self.input_folder, file_name)
+        pd.DataFrame(removed_participants, columns=[participant_col]).to_csv(csv_path, index=False)
+        filtered_df = filtered_df.reset_index(drop=True)
+
+        return filtered_df
+
 
     def gets_measurement_name(self, file_name):
         "from file called 'statistics_hr', extract 'hr'"
-    def add_col(self, data, column_name, column_value):
-        "add new column to dataframe with same value"
+        base_name = file_name.split('/')[-1]
+        base_name = base_name.replace("statistics_", "").upper()
+        return base_name.split(".")[0]
 
-   
-#maybe
-# df.columns = pd.MultiIndex.from_tuples([
-#     (col[0], '' if 'Unnamed:' in col[1] else col[1])
-#     for col in df.columns
-# ])
