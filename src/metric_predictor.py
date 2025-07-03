@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import KNeighborsRegressor
 
-from src.metrics_enum import Metrics
+from metrics_enum import Metrics
 
 """
 Metric Prediction Module
