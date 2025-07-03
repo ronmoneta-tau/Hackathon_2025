@@ -284,48 +284,53 @@ class Visualizer:
         plt.tight_layout()
         plt.show()
 
-    def plot_change_vs_arousal(
+    def plot_change_vs_mean(
         self,
-        task_dataset: str,
-        task_metric: str,
-        physio_dataset: str,
-        physio_metric: str,
+        change_dataset: str,
+        change_metric: str,
+        mean_dataset: str,
+        mean_metric: str,
     ) -> None:
         """
-        Scatter plot: change in task metric (session 6 - session 1) vs. baseline arousal.
+        Scatter plot: change in 'change_metric' (last session - first session) vs. mean of 'mean_metric'.
 
         Parameters
         ----------
-        task_dataset : str
-            Task dataset name.
-        task_metric : str
-            Column for delta calculation.
-        physio_dataset : str
-            Physiological dataset name.
-        physio_metric : str
-            Column for arousal (mean per participant).
-        """
-        df = self.data[task_dataset].copy()
-        df["_session"] = df.groupby(self.id_col).cumcount() + 1
-        base = df[df["_session"] == 1].set_index(self.id_col)[task_metric]
-        end = df[df["_session"] == 6].set_index(self.id_col)[task_metric]
-        change = (end - base).rename("Δ" + task_metric)
+        change_dataset : str
+            Name of the dataset for the change metric (e.g., task data).
+        change_metric : str
+            Column name for the change metric (e.g., a cognitive score).
+        mean_dataset : str
+            Name of the dataset for the mean metric (e.g., physiological or affective data).
+        mean_metric : str
+            Column name for the mean metric.
 
-        phys = self.data[physio_dataset].copy()
-        arousal = phys.groupby(self.id_col)[physio_metric].mean()
-        comp = pd.concat([change, arousal], axis=1).dropna()
+        Displays
+        --------
+        A scatter plot showing the correlation (Pearson r) between the change in the task metric
+        and the mean value of the other metric.
+        """
+        df = self.data[change_dataset].copy()
+        df["_session"] = df.groupby(self.id_col).cumcount() + 1
+        base = df[df["_session"] == 1].set_index(self.id_col)[change_metric]
+        end = df[df["_session"] == 6].set_index(self.id_col)[change_metric]
+        change = (end - base).rename("Δ" + change_metric)
+
+        mean_df = self.data[mean_dataset].copy()
+        mean_values = mean_df.groupby(self.id_col)[mean_metric].mean()
+        comp = pd.concat([change, mean_values], axis=1).dropna()
 
         fig, ax = plt.subplots(figsize=(6, 6))
-        ax.scatter(comp[physio_metric], comp["Δ" + task_metric], s=30)
-        pearson_r = comp[physio_metric].corr(comp["Δ" + task_metric])
-        m, b = np.polyfit(comp[physio_metric], comp["Δ" + task_metric], 1)
+        ax.scatter(comp[mean_metric], comp["Δ" + change_metric], s=30)
+        pearson_r = comp[mean_metric].corr(comp["Δ" + change_metric])
+        m, b = np.polyfit(comp[mean_metric], comp["Δ" + change_metric], 1)
         xs = np.array(ax.get_xlim())
         ax.plot(xs, m * xs + b, color="red", linestyle="--", linewidth=1)
 
-        ax.set_xlabel(self._get_unit(physio_metric), fontsize=12)
-        ax.set_ylabel(f"Δ{self._get_unit(task_metric)}", fontsize=12)
+        ax.set_xlabel(self._get_unit(mean_metric), fontsize=12)
+        ax.set_ylabel(f"Δ{self._get_unit(change_metric)}", fontsize=12)
         ax.set_title(
-            f"{task_metric} Change vs {physio_metric}\nPearson r = {pearson_r:.2f}",
+            f"{change_metric} Change vs {mean_metric}\nPearson r = {pearson_r:.2f}",
             fontsize=14,
         )
         ax.spines["top"].set_visible(False)
