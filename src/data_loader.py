@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from metrics_enum import Metrics
+
 
 class DataLoader:
     """
@@ -72,7 +74,7 @@ class DataLoader:
                 feature_df = pd.read_csv(item_path, header=None)
 
                 # Define allowed measure types
-                valid_measures = {"linear", "log", "categorical", "binary"}
+                valid_measures = {m.value for m in Metrics}
 
                 # Replace undefined values with 'linear'
                 feature_df[1] = feature_df[1].apply(
@@ -83,7 +85,6 @@ class DataLoader:
                 self.feature_map = pd.Series(
                     feature_df[1].values, index=feature_df[0].values
                 ).to_dict()
-
 
         for entry in os.listdir(self.input_folder):
             full_path = os.path.join(self.input_folder, entry)
