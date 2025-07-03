@@ -8,7 +8,7 @@ from src.data_loader import DataLoader
 
 # Get the absolute path of the current script's directory (the source folder)
 source_folder = os.path.dirname(os.path.abspath(__file__))
-folder_path = os.path.join(source_folder, '..', 'data')
+folder_path = os.path.join(source_folder, "..", "data")
 
 # Test if the folder path is acceptable:
 
@@ -64,9 +64,7 @@ def test_output_length():
 
 def test_handle_demographic():
     clinical_folder = os.path.join(folder_path, "clinical")
-    clinical_file_path = os.path.join(
-        clinical_folder, "demographic_and_clinical.xlsx"
-    )
+    clinical_file_path = os.path.join(clinical_folder, "demographic_and_clinical.xlsx")
     data_loader = DataLoader(folder_path)
     result_name, result_df = data_loader.handle_demographic(clinical_file_path)
 
@@ -88,9 +86,7 @@ def test_handle_cog():
     data_loader = DataLoader(folder_path)
     data_loader.first_task_made = first_task_df
     cog_folder = os.path.join(folder_path, "tasks")
-    cog_file_path = os.path.join(
-        cog_folder, "stop_it_with_code_book.xlsx"
-    )
+    cog_file_path = os.path.join(cog_folder, "stop_it_with_code_book.xlsx")
     result_name, result_df = data_loader.handle_cog(cog_file_path)
 
     assert result_name == "stop_it"
@@ -101,9 +97,7 @@ def test_handle_cog():
 
 def test_handle_physio():
     physio_folder = os.path.join(folder_path, "physio")
-    physio_file_path = os.path.join(
-        physio_folder, "statistics_hr.xlsx"
-    )
+    physio_file_path = os.path.join(physio_folder, "statistics_hr.xlsx")
     data_loader = DataLoader(folder_path)
     result_name, result_df = data_loader.handle_physio(physio_file_path)
 
