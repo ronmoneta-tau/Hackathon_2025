@@ -1,11 +1,13 @@
 folder_path = "/Users/user/Downloads/hackathon_2025"
-from src.data_loader import DataLoader
-import pytest
-import pandas as pd
-from unittest import mock
-from pathlib import Path
 import os
-from unittest.mock import patch, mock_open
+from pathlib import Path
+from unittest import mock
+from unittest.mock import mock_open, patch
+
+import pandas as pd
+import pytest
+
+from src.data_loader import DataLoader
 
 
 # Test if the folder path is acceptable:
