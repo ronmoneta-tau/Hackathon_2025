@@ -3,8 +3,12 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import sys
 
-from src.data_loader import DataLoader
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+from data_loader import DataLoader
 
 # Get the absolute path of the current script's directory (the source folder)
 source_folder = os.path.dirname(os.path.abspath(__file__))
@@ -120,6 +124,35 @@ def test_gets_measurement_name_without_prefix():
     file_name = "/path/to/HR.xlsx"
     result = DataLoader.gets_measurement_name(file_name)
     assert result == "HR"
+
+def test_invalid_feature_types_replaced_with_linear():
+    csv_path = os.path.join(folder_path, "test_feature_map.csv")
+
+    # Create a CSV with some valid and some invalid feature types
+    test_data = [
+        ["feature1", "log"],
+        ["feature2", "banana"],     # invalid
+        ["feature3", "categorical"],
+        ["feature4", "unknown"],    # invalid
+        ["feature5", "linear"]
+    ]
+
+    # Save it to the expected location
+    pd.DataFrame(test_data).to_csv(csv_path, index=False, header=False)
+
+    # Run the DataLoader
+    data_loader = DataLoader(folder_path)
+    _, feature_map = data_loader.get_dataframe()
+
+    # Clean up after test
+    os.remove(csv_path)
+
+    # Assert that invalid values were replaced with 'linear'
+    assert feature_map["feature1"] == "log"
+    assert feature_map["feature2"] == "linear"
+    assert feature_map["feature3"] == "categorical"
+    assert feature_map["feature4"] == "linear"
+    assert feature_map["feature5"] == "linear"
 
 
 if __name__ == "__main__":  # pragma: no cover
