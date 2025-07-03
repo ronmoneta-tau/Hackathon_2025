@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 
 
@@ -7,7 +8,7 @@ class MetricUnit(Enum):
     """
 
     SSRT = "ms"
-    Post_Error_Efficiency = "%"
+    Post_Go_Error_Efficiency = "%"
     D_context = "z-score"
     A_cue_bias = "z-score"
     PBI_error = "ratio"
@@ -31,5 +32,18 @@ class MetricUnit(Enum):
         str
             The unit for that metric, or an empty string if unknown.
         """
-        key = metric_name.replace(" ", "_").replace("’", "").replace("'", "")
-        return cls[key].value if key in cls.__members__ else ""
+        # Normalize: lowercase, replace all types of apostrophes with underscore, remove punctuation
+        key = metric_name
+        # unify all apostrophes to underscore
+        key = re.sub(r"[’'`]", "_", key)
+        # remove dots and other punctuation except underscores and letters/numbers
+        key = re.sub(r"[^\w]", "_", key)
+        # collapse multiple underscores to one
+        key = re.sub(r"_+", "_", key)
+        # remove leading/trailing underscores/whitespace
+        key = key.strip("_ ").strip()
+        # upper/lower case fix to match Enum keys
+        for candidate in cls.__members__:
+            if candidate.lower() == key.lower():
+                return cls[candidate].value
+        return ""
