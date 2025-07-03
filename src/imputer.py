@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.stats import zscore
 
-from src.mertices_enum import Metrics
+from src.metrics_enum import Metrics
 
 FEATURE_BREAKDOWNS = {
     "SSRT": ["Median Go RT", "Average SSD"],

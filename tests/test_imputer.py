@@ -4,7 +4,7 @@ import pytest
 
 from src.imputer import (DataImputer, FeatureImputer, QuartileClipper,
                          SciPyInterpolator)
-from src.mertices_enum import Metrics
+from src.metrics_enum import Metrics
 
 
 def test_not_enough_points_returns_nan():
