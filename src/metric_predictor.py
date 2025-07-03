@@ -3,9 +3,7 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import KNeighborsRegressor
 from scipy.interpolate import interp1d
-
-kinds = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous',
-             'next'}
+from src.mertices_enum import Metrics
 
 
 class MetricPredictor:
@@ -28,7 +26,6 @@ class MetricPredictor:
 
         return metric_dict
 
-
     def get_best_metric(self, measurement, idx_to_hide):
         df = self.df[["ID", measurement]].copy()
 
@@ -36,7 +33,7 @@ class MetricPredictor:
         df = self.get_df_with_valid_participants(df, measurement)
 
         actual_values = []
-        preds_by_kind = {kind: [] for kind in kinds}
+        preds_by_kind = {kind.value: [] for kind in Metrics}
         # preds_interpolation = []
         preds_mean = []
         preds_median = []
@@ -48,7 +45,7 @@ class MetricPredictor:
             group_hidden = group.drop(index=idx_to_hide)
             actual = group.loc[idx_to_hide, measurement]
 
-            for kind in kinds:
+            for kind in (k.value for k in Metrics):
                 interpolated = self.interpolate(group_hidden, measurement, group, idx_to_hide, kind)
                 preds_by_kind[kind].append(interpolated)
 
