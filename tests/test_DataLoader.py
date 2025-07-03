@@ -19,18 +19,14 @@ def test_invalid_folder_path():
 
 def test_file_instead_folder():
     invalid_path = (
-        "/Users/user/Documents/2nd_Degree/Courses/"
-        "Python/parse_subject_names.ipynb"
+        "/Users/user/Documents/2nd_Degree/Courses/Python/parse_subject_names.ipynb"
     )
     with pytest.raises(FileNotFoundError):
         DataLoader(invalid_path)
 
 
 def test_empty_input_folder_returns_empty():
-    empty_folder_path = (
-        "/Users/user/Documents/2nd_Degree/"
-        "Courses/Python/empty_folder"
-    )
+    empty_folder_path = "/Users/user/Documents/2nd_Degree/Courses/Python/empty_folder"
     data_loader = DataLoader(empty_folder_path)
 
     df_dict, feature_map = data_loader.get_dataframe()
@@ -66,8 +62,7 @@ def test_output_length():
 
 def test_handle_demographic():
     clinical_file_path = os.path.join(
-        "/Users/user/Downloads/hackathon_2025/clinical",
-        "demographic_and_clinical.xlsx"
+        "/Users/user/Downloads/hackathon_2025/clinical", "demographic_and_clinical.xlsx"
     )
     data_loader = DataLoader(folder_path)
     result_name, result_df = data_loader.handle_demographic(clinical_file_path)
@@ -91,8 +86,7 @@ def test_handle_cog():
     data_loader.first_task_made = first_task_df
 
     cog_file_path = os.path.join(
-        "/Users/user/Downloads/hackathon_2025/tasks",
-        "stop_it_with_code_book.xlsx"
+        "/Users/user/Downloads/hackathon_2025/tasks", "stop_it_with_code_book.xlsx"
     )
     result_name, result_df = data_loader.handle_cog(cog_file_path)
 

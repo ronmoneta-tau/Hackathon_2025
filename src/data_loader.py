@@ -59,8 +59,7 @@ class DataLoader:
         # find excel file and save it:
         for item in os.listdir(self.input_folder):
             item_path = os.path.join(self.input_folder, item)
-            if os.path.isfile(item_path) and \
-                    item.lower().endswith((".xls", ".xlsx")):
+            if os.path.isfile(item_path) and item.lower().endswith((".xls", ".xlsx")):
                 self.first_task_made = pd.read_excel(item_path)
             elif os.path.isfile(item_path) and item.lower().endswith((".csv")):
                 feature_df = pd.read_csv(
@@ -251,9 +250,7 @@ class DataLoader:
 
         return name, filter_df
 
-    def filter_participants_in_physio(
-            self, df, num, file_name, participant_col="ID"
-            ):
+    def filter_participants_in_physio(self, df, num, file_name, participant_col="ID"):
         """
         Filters out participants who do not have all data across all sheets.
 
