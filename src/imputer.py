@@ -117,7 +117,7 @@ class FeatureImputer:
         self.feature = feature
         self.method = method
         self.interpolator_cls = interpolator_cls
-        if self.method in  Metrics._value2member_map_:
+        if self.method in Metrics._value2member_map_:
             self.generation_function = self.interpolation_generation
         elif self.method == "median":
             self.generation_function = self.median_generation
@@ -126,7 +126,6 @@ class FeatureImputer:
         else:
             raise ValueError(f"Unsupported imputation method: {self.method}")
 
-    @staticmethod
     def mean_generation(
         self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series
     ) -> np.ndarray:
@@ -140,7 +139,6 @@ class FeatureImputer:
         mean_value = values.mean()
         return np.array(values.fillna(mean_value))
 
-    @staticmethod
     def median_generation(
         self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series
     ) -> np.ndarray:
