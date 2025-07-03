@@ -52,7 +52,8 @@ class MetricPredictor:
 
         return interpolated, mean_pred, median_pred, knn_pred
 
-    def get_df_with_valid_participants(self, df, measurement):
+    @staticmethod
+    def get_df_with_valid_participants(df, measurement):
         # Filter IDs with at least 6 measurements
         df = df.dropna(subset=[measurement])
         counts = df['ID'].value_counts()
@@ -60,7 +61,8 @@ class MetricPredictor:
         valid_ids = counts[counts >= max_count].index
         return df[df['ID'].isin(valid_ids)]
 
-    def predict_using_knn(self, group, idx_to_hide, group_hidden, measurement):
+    @staticmethod
+    def predict_using_knn(group, idx_to_hide, group_hidden, measurement):
         # KNN Prediction
         try:
             # Use row position as "time" if no actual time feature
@@ -75,7 +77,8 @@ class MetricPredictor:
         except:
             return np.nan
 
-    def interpolate(self, group_hidden, measurement, group, idx_to_hide):
+    @staticmethod
+    def interpolate(group_hidden, measurement, group, idx_to_hide):
         # Interpolation using scipy
         try:
             # Use index positions or actual "Time" if you have it
@@ -90,7 +93,8 @@ class MetricPredictor:
         except:
             return np.nan
 
-    def evaluate_method_accuracy(self, preds_interpolation, preds_mean, preds_median, preds_knn, actual_values):
+    @staticmethod
+    def evaluate_method_accuracy(preds_interpolation, preds_mean, preds_median, preds_knn, actual_values):
         methods = {
             'interpolation': preds_interpolation,
             'mean': preds_mean,
@@ -107,6 +111,10 @@ class MetricPredictor:
                 score = mean_squared_error(y_true[valid_mask], y_pred[valid_mask])
                 scores[name] = score
 
-        # Step 4: Return the method with the lowest RMSE
+        if not scores:
+            return None
+
+        # Return the method with the lowest RMSE
         best_method = min(scores, key=scores.get)
+
         return best_method
