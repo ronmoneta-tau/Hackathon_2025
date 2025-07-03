@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 from metrics_enum import Metrics
 
@@ -182,6 +183,7 @@ class DataLoader:
         excel_file = pd.ExcelFile(file_name)
         sheet_names = excel_file.sheet_names
         df = pd.read_excel(file_name, sheet_name=sheet_names[0])
+        df = df.replace(" ", np.nan)
         df.rename(columns={df.columns[0]: "ID"}, inplace=True)
         name = self.gets_task_name(file_name)
         df = self.map_condition_column(df, name)
