@@ -1,18 +1,21 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
+
+import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
-import numpy as np
 from scipy.stats import zscore
 
-FEATURE_BREAKDOWNS = {"SSRT": ['Median Go RT', 'Average SSD'],
-                      'Post Go Error Efficiency': ['Post Go Error Go % Accuracy', 'Post Go Error Go RT'],
-                      "D’context": ["Z (AX CorrectRate)", "Z(BX IncorrectRate)"],
-                      "A-cue bias": ["Z (AX CorrectRate)", "Z(AY IncorrectRate)"],
-                      "PBI_composite": ["PBI_error", "PBI_rt"],
-                      "PBI_error": ["AY IncorrectRate adjusted", "BX IncorrectRate adjusted"],
-                      "PBI_rt": ["AY Correct Mean RT", "BX Correct Mean RT"], }  # TODO: move to config?
+FEATURE_BREAKDOWNS = {
+    "SSRT": ["Median Go RT", "Average SSD"],
+    "Post Go Error Efficiency": ["Post Go Error Go % Accuracy", "Post Go Error Go RT"],
+    "D’context": ["Z (AX CorrectRate)", "Z(BX IncorrectRate)"],
+    "A-cue bias": ["Z (AX CorrectRate)", "Z(AY IncorrectRate)"],
+    "PBI_composite": ["PBI_error", "PBI_rt"],
+    "PBI_error": ["AY IncorrectRate adjusted", "BX IncorrectRate adjusted"],
+    "PBI_rt": ["AY Correct Mean RT", "BX Correct Mean RT"],
+}  # TODO: move to config?
 
 
 class InterpolationStrategy(ABC):
@@ -20,11 +23,22 @@ class InterpolationStrategy(ABC):
     Strategy interface for interpolation.
     """
 
-    kinds = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous',
-             'next'}  # TODO: move to config?
+    kinds = {
+        "linear",
+        "nearest",
+        "nearest-up",
+        "zero",
+        "slinear",
+        "quadratic",
+        "cubic",
+        "previous",
+        "next",
+    }  # TODO: move to config?
 
     @abstractmethod
-    def interpolate(self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray) -> np.ndarray:
+    def interpolate(
+        self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray
+    ) -> np.ndarray:
         pass
 
 
@@ -33,10 +47,12 @@ class SciPyInterpolator(InterpolationStrategy):
     Concrete interpolation strategy using SciPy's interp1d.
     """
 
-    def __init__(self, kind: str = 'linear'):
+    def __init__(self, kind: str = "linear"):
         self.kind = kind
 
-    def interpolate(self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray) -> np.ndarray:
+    def interpolate(
+        self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray
+    ) -> np.ndarray:
         """
         Interpolates y values at new_x based on x and y using the specified interpolation kind.
         :param x: Original x values (independent variable).
@@ -48,7 +64,7 @@ class SciPyInterpolator(InterpolationStrategy):
             # Not enough points to interpolate; return NaNs
             raise ValueError("Not enough points to interpolate")
 
-        func = interp1d(x, y, kind=self.kind, fill_value='extrapolate')
+        func = interp1d(x, y, kind=self.kind, fill_value="extrapolate")
         return func(new_x)
 
 
@@ -67,9 +83,15 @@ class QuartileClipper:
         Computes the IQR for the specified feature grouped by the quartile feature.
         :param impute_feature: The feature for which quartiles are computed.
         """
-        self.quartiles = self.df.groupby(self.quartile_feature)[impute_feature].quantile([0.25, 0.75]).unstack()
+        self.quartiles = (
+            self.df.groupby(self.quartile_feature)[impute_feature]
+            .quantile([0.25, 0.75])
+            .unstack()
+        )
 
-    def clip(self, df: pd.DataFrame, generated_values: np.ndarray, nan_masks: pd.Series) -> np.ndarray:
+    def clip(
+        self, df: pd.DataFrame, generated_values: np.ndarray, nan_masks: pd.Series
+    ) -> np.ndarray:
         """
         Clips the generated values to the IQR bounds for each quartile group.
         :param df: DataFrame containing the quartile feature.
@@ -81,8 +103,11 @@ class QuartileClipper:
         data_by_quartile_feature = df[self.quartile_feature]
         lower = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.25])
         upper = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.75])
-        clipped_values[nan_masks] = np.clip(generated_values[nan_masks], lower.values[nan_masks],
-                                            upper.values[nan_masks])
+        clipped_values[nan_masks] = np.clip(
+            generated_values[nan_masks],
+            lower.values[nan_masks],
+            upper.values[nan_masks],
+        )
         return clipped_values
 
 
@@ -91,22 +116,30 @@ class FeatureImputer:
     Imputes a single feature using an interpolation strategy and optional censor.
     """
 
-    def __init__(self, df: pd.DataFrame, feature: str, method: str, interpolator_cls: Any = SciPyInterpolator):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        feature: str,
+        method: str,
+        interpolator_cls: Any = SciPyInterpolator,
+    ):
         self.df = df
         self.feature = feature
         self.method = method
         self.interpolator_cls = interpolator_cls
         if self.method in InterpolationStrategy.kinds:
             self.generation_function = self.interpolation_generation
-        elif self.method == 'median':
+        elif self.method == "median":
             self.generation_function = self.median_generation
-        elif self.method == 'mean':
+        elif self.method == "mean":
             self.generation_function = self.mean_generation
         else:
             raise ValueError(f"Unsupported imputation method: {self.method}")
 
     @staticmethod
-    def mean_generation(self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series) -> np.ndarray:
+    def mean_generation(
+        self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series
+    ) -> np.ndarray:
         """
         Generates values by filling NaNs with the mean of the valid values.
         :param idx: Index of the DataFrame.
@@ -118,7 +151,9 @@ class FeatureImputer:
         return np.array(values.fillna(mean_value))
 
     @staticmethod
-    def median_generation(self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series) -> np.ndarray:
+    def median_generation(
+        self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series
+    ) -> np.ndarray:
         """
         Generates values by filling NaNs with the median of the valid values.
         :param idx: Index of the DataFrame.
@@ -129,7 +164,9 @@ class FeatureImputer:
         median_value = values.median()
         return np.array(values.fillna(median_value))
 
-    def interpolation_generation(self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series) -> np.ndarray:
+    def interpolation_generation(
+        self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series
+    ) -> np.ndarray:
         """
         Generates values by interpolating the valid values using the specified method.
         :param idx: Index of the DataFrame.
@@ -151,7 +188,7 @@ class FeatureImputer:
         quartile_clipper.compute_quartiles(self.feature)
         feature_series = self.df[self.feature].copy().astype(float)
 
-        for _, group in self.df.groupby('ID'):
+        for _, group in self.df.groupby("ID"):
             idx = group.index
             values = group[self.feature]
             valid_mask = ~group[self.feature].isna()
@@ -201,21 +238,31 @@ class DataImputer:
                 self.logger.warning(f"Feature '{feature}' not in DataFrame; skipping.")
                 continue
 
-            feature_blocks = self.feature_breakdowns[feature] if feature in self.feature_breakdowns else [feature]
+            feature_blocks = (
+                self.feature_breakdowns[feature]
+                if feature in self.feature_breakdowns
+                else [feature]
+            )
             if "PBI_error" in feature_blocks:
                 feature_blocks.extend(self.feature_breakdowns["PBI_error"])
             if "PBI_rt" in feature_blocks:
                 feature_blocks.extend(self.feature_breakdowns["PBI_rt"])
 
-            feature_blocks = set([fb for fb in feature_blocks if fb != "PBI_error" and fb != "PBI_rt"])
+            feature_blocks = set(
+                [fb for fb in feature_blocks if fb != "PBI_error" and fb != "PBI_rt"]
+            )
 
             for block in feature_blocks:
                 self.data = self.impute(block, method)
 
             if len(feature_blocks) > 1:  # incase this is a composite feature
-                self.logger.info(f"Creating feature '{feature}' using the imputed features.")
-                common_feature_name = ''.join(c if c.isalpha() else '_' for c in feature.lower())
-                builder = getattr(self, f'build_{common_feature_name}')
+                self.logger.info(
+                    f"Creating feature '{feature}' using the imputed features."
+                )
+                common_feature_name = "".join(
+                    c if c.isalpha() else "_" for c in feature.lower()
+                )
+                builder = getattr(self, f"build_{common_feature_name}")
                 self.data = builder()
 
         return self.data
@@ -225,9 +272,11 @@ class DataImputer:
         Builds the missing SSRT points from its components by the formula SSRT = Median go RT - Average SSD.
         :return: DataFrame with SSRT values filled in.
         """
-        nan_mask = self.data['SSRT'].isna()
-        self.data.loc[nan_mask, 'SSRT'] = self.data.loc[nan_mask, 'Median Go RT'] - self.data.loc[
-            nan_mask, 'Average SSD']
+        nan_mask = self.data["SSRT"].isna()
+        self.data.loc[nan_mask, "SSRT"] = (
+            self.data.loc[nan_mask, "Median Go RT"]
+            - self.data.loc[nan_mask, "Average SSD"]
+        )
         return self.data
 
     def build_post_go_error_efficiency(self) -> pd.DataFrame:
@@ -235,10 +284,11 @@ class DataImputer:
         Builds the missing Post Go Error Efficiency points from its components by the formula SSRT = Post Go Error go % Accuracy / Post Go Error GO RT.
         :return: DataFrame with Post Go Error Efficiency values filled in.
         """
-        nan_mask = self.data['Post Go Error Efficiency'].isna()
-        self.data.loc[nan_mask, 'Post Go Error Efficiency'] = self.data.loc[nan_mask, 'Post Go Error Go % Accuracy'] / \
-                                                              self.data.loc[
-                                                                  nan_mask, 'Post Go Error Go RT']
+        nan_mask = self.data["Post Go Error Efficiency"].isna()
+        self.data.loc[nan_mask, "Post Go Error Efficiency"] = (
+            self.data.loc[nan_mask, "Post Go Error Go % Accuracy"]
+            / self.data.loc[nan_mask, "Post Go Error Go RT"]
+        )
 
         return self.data
 
@@ -248,8 +298,10 @@ class DataImputer:
         :return: DataFrame with D'context values filled in.
         """
         nan_mask = self.data["D’context"].isna()
-        self.data.loc[nan_mask, "D’context"] = self.data.loc[nan_mask, "Z (AX CorrectRate)"] / self.data.loc[
-            nan_mask, "Z(BX IncorrectRate)"]
+        self.data.loc[nan_mask, "D’context"] = (
+            self.data.loc[nan_mask, "Z (AX CorrectRate)"]
+            / self.data.loc[nan_mask, "Z(BX IncorrectRate)"]
+        )
 
         return self.data
 
@@ -259,8 +311,10 @@ class DataImputer:
         :return: DataFrame with A-cue bias values filled in.
         """
         nan_mask = self.data["A-cue bias"].isna()
-        self.data.loc[nan_mask, "A-cue bias"] = 0.5 * (self.data.loc[nan_mask, "Z (AX CorrectRate)"] + self.data.loc[
-            nan_mask, "Z(AY IncorrectRate)"])
+        self.data.loc[nan_mask, "A-cue bias"] = 0.5 * (
+            self.data.loc[nan_mask, "Z (AX CorrectRate)"]
+            + self.data.loc[nan_mask, "Z(AY IncorrectRate)"]
+        )
 
         return self.data
 
@@ -270,9 +324,13 @@ class DataImputer:
         :return: DataFrame with PBI_error values filled in.
         """
         nan_mask = self.data["PBI_error"].isna()
-        self.data.loc[nan_mask, "PBI_error"] = (self.data.loc[nan_mask, "AY IncorrectRate adjusted"] - self.data.loc[
-            nan_mask, "BX IncorrectRate adjusted"]) / (self.data.loc[nan_mask, "AY IncorrectRate adjusted"] +
-                                                       self.data.loc[nan_mask, "BX IncorrectRate adjusted"])
+        self.data.loc[nan_mask, "PBI_error"] = (
+            self.data.loc[nan_mask, "AY IncorrectRate adjusted"]
+            - self.data.loc[nan_mask, "BX IncorrectRate adjusted"]
+        ) / (
+            self.data.loc[nan_mask, "AY IncorrectRate adjusted"]
+            + self.data.loc[nan_mask, "BX IncorrectRate adjusted"]
+        )
 
         return self.data
 
@@ -282,9 +340,13 @@ class DataImputer:
         :return: DataFrame with PBI_rt values filled in.
         """
         nan_mask = self.data["PBI_rt"].isna()
-        self.data.loc[nan_mask, "PBI_rt"] = (self.data.loc[nan_mask, "AY Correct Mean RT"] - self.data.loc[
-            nan_mask, "BX Correct Mean RT"]) / (self.data.loc[nan_mask, "AY Correct Mean RT"] +
-                                                self.data.loc[nan_mask, "BX Correct Mean RT"])
+        self.data.loc[nan_mask, "PBI_rt"] = (
+            self.data.loc[nan_mask, "AY Correct Mean RT"]
+            - self.data.loc[nan_mask, "BX Correct Mean RT"]
+        ) / (
+            self.data.loc[nan_mask, "AY Correct Mean RT"]
+            + self.data.loc[nan_mask, "BX Correct Mean RT"]
+        )
 
         return self.data
 
@@ -297,7 +359,12 @@ class DataImputer:
         self.data = self.build_PBI_rt()
 
         nan_mask = self.data["PBI_composite"].isna()
-        self.data.loc[nan_mask, "PBI_composite"] = np.mean([zscore(self.data.loc[nan_mask, "PBI_error"]),
-                                                            zscore(self.data.loc[nan_mask, "PBI_rt"])], axis=0)
+        self.data.loc[nan_mask, "PBI_composite"] = np.mean(
+            [
+                zscore(self.data.loc[nan_mask, "PBI_error"]),
+                zscore(self.data.loc[nan_mask, "PBI_rt"]),
+            ],
+            axis=0,
+        )
 
         return self.data
