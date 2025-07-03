@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.stats import zscore
 
-from src.metrics_enum import Metrics
+from metrics_enum import Metrics
 
 FEATURE_BREAKDOWNS = {
     "SSRT": ["Median Go RT", "Average SSD"],
@@ -182,7 +182,7 @@ class FeatureImputer:
             valid_mask = ~group[self.feature].isna()
             generated_values = self.generation_function(idx, values, valid_mask)
             clipped_values = quartile_clipper.clip(group, generated_values, ~valid_mask)
-            feature_series.iloc[idx] = clipped_values
+            feature_series.iloc[idx] = clipped_values.astype(float)
 
         return feature_series
 
@@ -213,6 +213,7 @@ class DataImputer:
         self.logger.info(f"Imputing feature '{feature}' using '{method}' imputation.")
         imputer = FeatureImputer(self.data, feature, method)
         self.data[feature] = imputer.impute()
+        self.data[feature] = self.data[feature].astype("float64")
 
         return self.data
 
@@ -265,6 +266,7 @@ class DataImputer:
             self.data.loc[nan_mask, "Median Go RT"]
             - self.data.loc[nan_mask, "Average SSD"]
         )
+        self.data["SSRT"] = self.data["SSRT"].astype("float64")
         return self.data
 
     def build_post_go_error_efficiency(self) -> pd.DataFrame:
@@ -278,6 +280,9 @@ class DataImputer:
             / self.data.loc[nan_mask, "Post Go Error Go RT"]
         )
 
+        self.data["Post Go Error Efficiency"] = self.data[
+            "Post Go Error Efficiency"
+        ].astype("float64")
         return self.data
 
     def build_d_context(self) -> pd.DataFrame:
@@ -291,6 +296,7 @@ class DataImputer:
             / self.data.loc[nan_mask, "Z(BX IncorrectRate)"]
         )
 
+        self.data["D’context"] = self.data["D’context"].astype("float64")
         return self.data
 
     def build_a_cue_bias(self) -> pd.DataFrame:
@@ -304,6 +310,7 @@ class DataImputer:
             + self.data.loc[nan_mask, "Z(AY IncorrectRate)"]
         )
 
+        self.data["A-cue bias"] = self.data["A-cue bias"].astype("float64")
         return self.data
 
     def build_PBI_error(self) -> pd.DataFrame:
@@ -320,6 +327,7 @@ class DataImputer:
             + self.data.loc[nan_mask, "BX IncorrectRate adjusted"]
         )
 
+        self.data["PBI_error"] = self.data["PBI_error"].astype("float64")
         return self.data
 
     def build_PBI_rt(self) -> pd.DataFrame:
@@ -336,6 +344,7 @@ class DataImputer:
             + self.data.loc[nan_mask, "BX Correct Mean RT"]
         )
 
+        self.data["PBI_rt"] = self.data["PBI_rt"].astype("float64")
         return self.data
 
     def build_pbi_composite(self) -> pd.DataFrame:
@@ -355,4 +364,5 @@ class DataImputer:
             axis=0,
         )
 
+        self.data["PBI_composite"] = self.data["PBI_composite"].astype("float64")
         return self.data

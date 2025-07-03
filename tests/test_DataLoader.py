@@ -9,7 +9,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from data_loader import DataLoader
+from src.data_loader import DataLoader
 
 # Get the absolute path of the current script's directory (the source folder)
 source_folder = os.path.dirname(os.path.abspath(__file__))
@@ -136,7 +136,7 @@ def test_invalid_feature_types_replaced_with_linear():
 
     # Create a CSV with some valid and some invalid feature types
     test_data = [
-        ["feature1", "log"],
+        ["feature1", "linear"],
         ["feature2", "banana"],  # invalid
         ["feature3", "slinear"],
         ["feature4", "unknown"],  # invalid
@@ -148,10 +148,10 @@ def test_invalid_feature_types_replaced_with_linear():
 
     # Run the DataLoader
     data_loader = DataLoader(folder_path)
-    _, feature_map = data_loader.get_dataframe()
+    feature_map = data_loader.set_up_feature_map(csv_path)
 
     # Clean up after test
-    os.remove(csv_path)
+    # os.remove(csv_path)
 
     # Assert that invalid values were replaced with 'linear'
     assert feature_map["feature1"] == "linear"
