@@ -5,13 +5,17 @@ import pandas as pd
 from scipy.interpolate import interp1d
 import numpy as np
 
+FEATURE_BREAKDOWNS = {"SSRT": ['Median Go RT', 'Average SSD'],
+                      'Post Go Error Efficiency': ['Post Go Error Go % Accuracy', 'Post Go Error Go RT']}
+
 
 class InterpolationStrategy(ABC):
     """
     Strategy interface for interpolation.
     """
 
-    kinds = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous', 'next'}
+    kinds = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous',
+             'next'}  # TODO: move to const?
 
     @abstractmethod
     def interpolate(self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray) -> np.ndarray:
@@ -53,7 +57,8 @@ class QuartileClipper:
         data_by_quartile_feature = df[self.quartile_feature]
         lower = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.25])
         upper = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.75])
-        clipped_values[nan_masks] = np.clip(generated_values[nan_masks], lower.values[nan_masks], upper.values[nan_masks])
+        clipped_values[nan_masks] = np.clip(generated_values[nan_masks], lower.values[nan_masks],
+                                            upper.values[nan_masks])
         return clipped_values
 
 
@@ -89,7 +94,7 @@ class FeatureImputer:
         quartile_clipper.compute_quartiles(self.feature)
         feature_series = self.df[self.feature].copy().astype(float)
 
-        for _, group in self.df.groupby('SDAN'):
+        for _, group in self.df.groupby('SDAN'):  # TODO: change to new ID name
             idx = group.index
             values = group[self.feature]
             valid_mask = ~group[self.feature].isna()
@@ -112,17 +117,49 @@ class DataImputer:
     def __init__(self, df: pd.DataFrame, features_methods: Dict[str, str]):
         self.data = df.copy()
         self.features_methods = features_methods
+        self.feature_breakdowns = FEATURE_BREAKDOWNS
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def impute(self) -> pd.DataFrame:
+    def impute(self, feature: str, method: str) -> pd.DataFrame:
+        self.logger.info(f"Imputing feature '{feature}' using '{method}' interpolation.")
+        imputer = FeatureImputer(self.data, feature, method)
+        self.data[feature] = imputer.impute()
+
+        return self.data
+
+    def impute_and_build(self):
         for feature, method in self.features_methods.items():
             if feature not in self.data.columns:
                 self.logger.warning(f"Feature '{feature}' not in DataFrame; skipping.")
                 continue
 
-            self.logger.info(f"Imputing feature '{feature}' using '{method}' interpolation.")
-            imputer = FeatureImputer(self.data, feature, method)
-            self.data[feature] = imputer.impute()
+            feature_blocks = self.feature_breakdowns[feature] if feature in self.feature_breakdowns else [feature]
+            for block in feature_blocks:
+                self.data = self.impute(block, method)
+
+            if len(feature_blocks) > 1:  # incase this is a composite feature
+                self.logger.info(f"Creating feature '{feature}' using the imputed features.")
+                builder = getattr(self, f'build_{feature.lower()}')  # TODO: Fix exactly by column name
+                self.data = builder()
+
+        return self.data
+
+    def build_ssrt(self):
+        """
+        Builds the missing SSRT points from its components by the formula SSRT = Median go RT - Average SSD.
+        """
+        nan_mask = self.data['SSRT'].isna()
+        self.data.loc[nan_mask, 'SSRT'] = self.data.loc[nan_mask, 'Median Go RT'] - self.data.loc[
+            nan_mask, 'Average SSD']
+        return self.data
+
+    def build_post_go_error_efficiency(self):
+        """
+        Builds the missing Post Go Error Efficiency points from its components by the formula SSRT = Post Go Error go % Accuracy / Post Go Error GO RT.
+        """
+        nan_mask = self.data['Post Go Error Efficiency'].isna()
+        self.data['Post Go Error Efficiency'] = self.data.loc[nan_mask, 'Post Go Error Go % Accuracy'] / self.data.loc[
+            nan_mask, 'Post Go Error Go RT']
 
         return self.data
