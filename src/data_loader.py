@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from metrics_enum import Metrics
 
@@ -126,7 +126,7 @@ class DataLoader:
         # Try converting columns to float if possible
         for col in df.columns:
             try:
-                df[col] = pd.to_numeric(df[col], errors='raise').astype(float)
+                df[col] = pd.to_numeric(df[col], errors="raise").astype(float)
             except (ValueError, TypeError):
                 continue  # Leave non-numeric columns as-is
 

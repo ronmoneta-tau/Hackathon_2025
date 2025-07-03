@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from .metric_unit import MetricUnit
+from metric_unit import MetricUnit
 
 
 class Visualizer:
