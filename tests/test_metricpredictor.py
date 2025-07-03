@@ -45,7 +45,7 @@ def test_interpolation_returns_float():
     })
     predictor = MetricPredictor(df)
     group = df[df['ID'] == 'A'].reset_index(drop=True)
-    result = predictor.interpolate(group_hidden=group.drop(3), measurement='measurement', group=group, idx_to_hide=3)
+    result = predictor.interpolate(group_hidden=group.drop(3), measurement='measurement', group=group, idx_to_hide=3, kind='linear')
     assert isinstance(result, float)
 
 
