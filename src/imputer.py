@@ -2,42 +2,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 import pandas as pd
-from pandas import DataFrame
 from scipy.interpolate import interp1d
 import numpy as np
-
-class Imputer:
-    def __init__(self, data: DataFrame, features_methods: dict):
-        self.data = data
-        self.features_methods = features_methods
-
-    def impute(self) -> DataFrame:
-        for feature, method in self.features_methods.items():
-            quartiles = self.data.groupby('TrialType')[feature].quantile([0.25, 0.75]).unstack()
-
-            for idx, group in self.data.groupby('SDAN'):
-                # original_indices = group.index.copy()
-                # group = group.reset_index(drop=True)
-                original = np.array(group[feature])
-                x = group.index[~group[feature].isna()]
-                y = group[feature].dropna()
-                if len(x) > 1:
-                    f = interp1d(x, y, kind=method, fill_value='extrapolate')
-                    new_values = f(group.index)
-                    nan_indices = np.where(np.isnan(original))[0]
-                    for nan_idx in nan_indices:
-                        trial_type = quartiles.iloc[nan_idx]
-                        q1, q3 = trial_type.loc[0.25], trial_type.loc[0.75]
-                        if new_values[nan_idx] < q1:
-                            new_values[nan_idx] = q1
-                        elif new_values[nan_idx] > q3:
-                            new_values[nan_idx] = q3
-                    group[feature] = new_values
-                    self.data.update(group)
-                    # self.data.loc[original_indices, feature] = new_values
-
-        return self.data
-
 
 
 class InterpolationStrategy(ABC):
@@ -67,18 +33,27 @@ class SciPyInterpolator(InterpolationStrategy):
         return func(new_x)
 
 
-class QuartileCensor:
+class QuartileClipper:
     """
-    Applies censoring of values to within the IQR bounds per TrialType.
+    Applies clipping of values to within the IQR bounds per inputted feature.
     """
 
-    def __init__(self, quantiles: pd.DataFrame):
-        self.quantiles = quantiles
+    def __init__(self, df: pd.DataFrame, quartile_feature: str = "TrialType"):
+        self.df = df
+        self.quartile_feature = quartile_feature
+        self.quartiles = None
 
-    def censor(self, trial_types: pd.Series, values: np.ndarray) -> np.ndarray:
-        lower = trial_types.map(lambda t: self.quantiles.loc[t, 0.25])
-        upper = trial_types.map(lambda t: self.quantiles.loc[t, 0.75])
-        return np.clip(values, lower.values, upper.values)
+    def compute_quartiles(self, impute_feature: str) -> None:
+        self.quartiles = self.df.groupby(self.quartile_feature)[impute_feature].quantile([0.25, 0.75]).unstack()
+
+    def clip(self, df: pd.DataFrame, interpolated_values: np.ndarray, nan_masks: pd.Series) -> np.ndarray:
+        clipped_values = interpolated_values.copy()
+        data_by_quartile_feature = df[self.quartile_feature]
+        lower = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.25])
+        upper = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.75])
+        clipped_values[nan_masks] = np.clip(interpolated_values[nan_masks], lower.values[nan_masks],
+                                            upper.values[nan_masks])
+        return clipped_values
 
 
 class FeatureImputer:
@@ -86,47 +61,30 @@ class FeatureImputer:
     Imputes a single feature using an interpolation strategy and optional censor.
     """
 
-    def __init__(
-        self,
-        df: pd.DataFrame,
-        feature: str,
-        method: str,
-        interpolator_cls: Any = SciPyInterpolator,
-    ):
+    def __init__(self, df: pd.DataFrame, feature: str, method: str, interpolator_cls: Any = SciPyInterpolator):
         self.df = df
         self.feature = feature
         self.method = method
         self.interpolator = interpolator_cls(kind=method)
 
-    def compute_quartiles(self) -> pd.DataFrame:
-        return (
-            self.df.groupby('TrialType')[self.feature]
-            .quantile([0.25, 0.75])
-            .unstack()
-        )
-
     def impute(self) -> pd.Series:
-        quartiles = self.compute_quartiles()
-        result = self.df[self.feature].copy().astype(float)
+        quartile_clipper = QuartileClipper(self.df)
+        quartile_clipper.compute_quartiles(self.feature)
+        feature_series = self.df[self.feature].copy().astype(float)
 
-        for sdan, group in self.df.groupby('SDAN'):
-            idx = group.index.to_numpy()
-            values = group[self.feature].to_numpy()
+        for _, group in self.df.groupby('SDAN'):
+            idx = group.index
+            values = group[self.feature]
 
-            valid_mask = ~group[self.feature].isna().to_numpy()
+            valid_mask = ~group[self.feature].isna()
             x = idx[valid_mask]
             y = values[valid_mask]
 
-            interpolated = self.interpolator.interpolate(x, y, idx)
+            interpolated_values = self.interpolator.interpolate(x, y, idx)
+            clipped_values = quartile_clipper.clip(group, interpolated_values, ~valid_mask)
+            feature_series.iloc[idx] = clipped_values
 
-            censor = QuartileCensor(quartiles)
-            censored = censor.censor(group['TrialType'], interpolated)
-
-            # Only replace NaNs in the original series
-            nan_positions = np.where(np.isnan(values))[0]
-            result.iloc[group.index[nan_positions]] = censored[nan_positions]
-
-        return result
+        return feature_series
 
 
 class DataImputer:
@@ -139,19 +97,19 @@ class DataImputer:
     """
 
     def __init__(self, df: pd.DataFrame, features_methods: Dict[str, str]):
-        self.df = df.copy()
+        self.data = df.copy()
         self.features_methods = features_methods
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def impute(self) -> pd.DataFrame:
         for feature, method in self.features_methods.items():
-            if feature not in self.df.columns:
+            if feature not in self.data.columns:
                 self.logger.warning(f"Feature '{feature}' not in DataFrame; skipping.")
                 continue
 
             self.logger.info(f"Imputing feature '{feature}' using '{method}' interpolation.")
-            imputer = FeatureImputer(self.df, feature, method)
-            self.df[feature] = imputer.impute()
+            imputer = FeatureImputer(self.data, feature, method)
+            self.data[feature] = imputer.impute()
 
-        return self.df
+        return self.data
