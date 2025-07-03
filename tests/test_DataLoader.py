@@ -1,5 +1,5 @@
 folder_path = "/Users/user/Downloads/hackathon_2025"
-from data_loader import DataLoader
+from src.data_loader import DataLoader
 import pytest
 import pandas as pd
 from unittest import mock
