@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.imputer import DataImputer, FeatureImputer, QuartileClipper, SciPyInterpolator
+from src.imputer import (DataImputer, FeatureImputer, QuartileClipper,
+                         SciPyInterpolator)
 from src.metrics_enum import Metrics
 
 
