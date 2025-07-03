@@ -151,7 +151,7 @@ def test_invalid_feature_types_replaced_with_linear():
     feature_map = data_loader.set_up_feature_map(csv_path)
 
     # Clean up after test
-    # os.remove(csv_path)
+    os.remove(csv_path)
 
     # Assert that invalid values were replaced with 'linear'
     assert feature_map["feature1"] == "linear"

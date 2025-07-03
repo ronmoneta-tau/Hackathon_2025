@@ -36,7 +36,7 @@ def main():
     )
     visualizer.plot_task_by_fluctuation_color("stop_it", "SSRT")
     visualizer.plot_mean_ci("tap_it", "A-cue bias")
-    visualizer.plot_change_vs_arousal("tap_it", "A-cue bias", "stop_it", "SSRT")
+    visualizer.plot_change_vs_mean("tap_it", "A-cue bias", "stop_it", "SSRT")
     visualizer.plot_cross_domain_correlation(
         {
             "stop_it": ["SSRT", "Post Go Error Efficiency"],
