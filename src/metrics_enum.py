@@ -9,5 +9,5 @@ class Metrics(Enum):
     Slinear = "slinear"
     Quadratic = ("quadratic",)
     Cubic = ("cubic",)
-    Previuos = ("previous",)
+    Previous = ("previous",)
     Next = "next"
