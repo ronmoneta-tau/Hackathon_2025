@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 from metrics_enum import Metrics
 
@@ -118,7 +119,19 @@ class DataLoader:
             - pandas.DataFrame: The processed clinical data.
         """
         df = pd.read_excel(file_name, header=[0, 1])
+
+        # Replace non-numeric placeholders
+        df = df.replace(["-", "not specified", "", " "], -1)
+
+        # Try converting columns to float if possible
+        for col in df.columns:
+            try:
+                df[col] = pd.to_numeric(df[col], errors='raise').astype(float)
+            except (ValueError, TypeError):
+                continue  # Leave non-numeric columns as-is
+
         df = self.flatten_df(df)
+
         return "clinical", df
 
     @staticmethod
@@ -170,6 +183,7 @@ class DataLoader:
         excel_file = pd.ExcelFile(file_name)
         sheet_names = excel_file.sheet_names
         df = pd.read_excel(file_name, sheet_name=sheet_names[0])
+        df = df.replace(" ", np.nan)
         df.rename(columns={df.columns[0]: "ID"}, inplace=True)
         name = self.gets_task_name(file_name)
         df = self.map_condition_column(df, name)
