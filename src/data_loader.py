@@ -2,8 +2,6 @@ import pandas as pd
 from pathlib import Path
 import os
 
-# /Users/user/Downloads/hackathon_2025
-
 
 class DataLoader:
     """
@@ -24,19 +22,13 @@ class DataLoader:
             The path to the root directory containing the data files.
         """
         self.input_folder = Path(input_folder)
-        # if not self.input_folder.exists():
-        #     raise FileNotFoundError(f"Input folder does not exist: {self.input_folder}")
         if not self.input_folder.exists() or not self.input_folder.is_dir():
             raise FileNotFoundError(
                 f"Input folder does not exist or is not a directory: {self.input_folder}"
             )
         self.first_task_made = None
         self.feature_map = {}
-        self.clinic_data = {}  # do we need?
-        self.task_data = {}  # do we need?
-        self.physio_data = {}  # do we need?
 
-    # need to load the order of tasks and add it to the cog pd.
     def get_dataframe(self):
         """
         Loads all relevant data files from the input folder.
@@ -58,7 +50,7 @@ class DataLoader:
         folder_handlers = {
             "clinical": self.handle_demographic,
             "tasks": self.handle_cog,
-            "physio": self.handle_physio,  # Assuming physio uses same handler as tasks
+            "physio": self.handle_physio,
         }
 
         # find excel file and save it:
@@ -73,7 +65,6 @@ class DataLoader:
                 self.feature_map = pd.Series(
                     feature_df[1].values, index=feature_df[0].values
                 ).to_dict()
-                # check if value isn't a real method, if not chose default #??
 
         for entry in os.listdir(self.input_folder):
             full_path = os.path.join(self.input_folder, entry)
@@ -106,9 +97,7 @@ class DataLoader:
             - str: The name assigned to this dataset ("clinical").
             - pandas.DataFrame: The processed clinical data.
         """
-        # "open excle, handgle merged columns, return name and dataframe"
         df = pd.read_excel(file_name, header=[0, 1])
-        # df.columns = ['_'.join([str(i) for i in col if str(i) != 'nan']).strip() for col in df.columns] #changes the MultiIndex into a single-level index
         df = self.flatten_df(df)
         return "clinical", df
 
@@ -186,18 +175,12 @@ class DataLoader:
         """
         condition_col = "CONDITION"
         participant_col = "ID"  # Update this if your ID column has a different name
-
-        # Get mapping per participant from first_task_made:
         cond_map = self.first_task_made[
             [participant_col, condition_col]
         ].drop_duplicates()
-
-        # Map 'Tap It'/'Stop It' to 'First'/'Second':
         cond_map[condition_col] = cond_map[condition_col].map(
             lambda x: "First" if x == target else "Second"
         )
-
-        # Merge this info into df_target:
         df_target = df_target.copy()
         df_target = df_target.merge(cond_map, on=participant_col, how="left")
 
