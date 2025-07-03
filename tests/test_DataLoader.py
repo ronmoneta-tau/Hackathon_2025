@@ -136,7 +136,7 @@ def test_invalid_feature_types_replaced_with_linear():
 
     # Create a CSV with some valid and some invalid feature types
     test_data = [
-        ["feature1", "log"],
+        ["feature1", "linear"],
         ["feature2", "banana"],  # invalid
         ["feature3", "slinear"],
         ["feature4", "unknown"],  # invalid
