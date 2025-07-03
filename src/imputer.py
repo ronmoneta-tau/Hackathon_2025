@@ -39,7 +39,7 @@ class SciPyInterpolator(InterpolationStrategy):
     def interpolate(self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray) -> np.ndarray:
         if len(x) < 2:
             # Not enough points to interpolate; return NaNs
-            return np.full_like(new_x, np.nan, dtype=float)
+            raise ValueError("Not enough points to interpolate")
 
         func = interp1d(x, y, kind=self.kind, fill_value='extrapolate')
         return func(new_x)
