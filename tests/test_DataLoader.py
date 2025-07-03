@@ -32,14 +32,18 @@ def test_file_instead_folder():
 
 
 def test_empty_input_folder_returns_empty():
-    folder_name = "empty_folder"
-    empty_folder_path = os.path.join(folder_path, folder_name)
-    data_loader = DataLoader(empty_folder_path)
+    empty_folder_path = os.path.join(folder_path, "temp_empty_folder")
+    os.makedirs(empty_folder_path, exist_ok=True)
 
-    df_dict, feature_map = data_loader.get_dataframe()
+    try:
+        data_loader = DataLoader(empty_folder_path)
+        df_dict, feature_map = data_loader.get_dataframe()
 
-    assert df_dict == {}, "Expected empty dictionary for df_dict"
-    assert feature_map == {}, "Expected empty dictionary for feature_map"
+        assert df_dict == {}, "Expected empty dictionary for df_dict"
+        assert feature_map == {}, "Expected empty dictionary for feature_map"
+    finally:
+        if not os.listdir(empty_folder_path):  # ensure it's empty
+            os.rmdir(empty_folder_path)
 
 
 def test_initialization():
