@@ -140,7 +140,7 @@ class DataImputer:
 
             if len(feature_blocks) > 1:  # incase this is a composite feature
                 self.logger.info(f"Creating feature '{feature}' using the imputed features.")
-                builder = getattr(self, f'build_{feature.lower()}')  # TODO: Fix exactly by column name
+                builder = getattr(self, f'build_{feature.lower().replace(" ","_")}')  # TODO: Fix exactly by column name
                 self.data = builder()
 
         return self.data
@@ -159,7 +159,7 @@ class DataImputer:
         Builds the missing Post Go Error Efficiency points from its components by the formula SSRT = Post Go Error go % Accuracy / Post Go Error GO RT.
         """
         nan_mask = self.data['Post Go Error Efficiency'].isna()
-        self.data['Post Go Error Efficiency'] = self.data.loc[nan_mask, 'Post Go Error Go % Accuracy'] / self.data.loc[
+        self.data.loc[nan_mask, 'Post Go Error Efficiency'] = self.data.loc[nan_mask, 'Post Go Error Go % Accuracy'] / self.data.loc[
             nan_mask, 'Post Go Error Go RT']
 
         return self.data
