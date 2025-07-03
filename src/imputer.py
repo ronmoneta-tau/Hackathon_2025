@@ -7,6 +7,8 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.stats import zscore
 
+from src.mertices_enum import Metrics
+
 FEATURE_BREAKDOWNS = {
     "SSRT": ["Median Go RT", "Average SSD"],
     "Post Go Error Efficiency": ["Post Go Error Go % Accuracy", "Post Go Error Go RT"],
@@ -22,18 +24,6 @@ class InterpolationStrategy(ABC):
     """
     Strategy interface for interpolation.
     """
-
-    kinds = {
-        "linear",
-        "nearest",
-        "nearest-up",
-        "zero",
-        "slinear",
-        "quadratic",
-        "cubic",
-        "previous",
-        "next",
-    }  # TODO: move to config?
 
     @abstractmethod
     def interpolate(
@@ -127,7 +117,7 @@ class FeatureImputer:
         self.feature = feature
         self.method = method
         self.interpolator_cls = interpolator_cls
-        if self.method in InterpolationStrategy.kinds:
+        if self.method in  Metrics._value2member_map_:
             self.generation_function = self.interpolation_generation
         elif self.method == "median":
             self.generation_function = self.median_generation

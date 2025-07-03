@@ -3,10 +3,12 @@ import numpy as np
 import pandas as pd
 from src.imputer import SciPyInterpolator, QuartileClipper, FeatureImputer, DataImputer
 import pytest
+from src.mertices_enum import Metrics
 
 
 def test_not_enough_points_returns_nan():
-    interp = SciPyInterpolator(kind='linear')
+    value = list(Metrics)[0].value
+    interp = SciPyInterpolator(kind=value)
     x = np.array([0])
     y = np.array([0])
     new_x = np.array([0, 1])
