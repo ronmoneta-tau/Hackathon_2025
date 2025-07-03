@@ -1,16 +1,16 @@
-folder_path = "/Users/user/Downloads/hackathon_2025"
 import os
 from pathlib import Path
-from unittest import mock
-from unittest.mock import mock_open, patch
 
 import pandas as pd
 import pytest
 
 from src.data_loader import DataLoader
 
+folder_path = "/Users/user/Downloads/hackathon_2025"
 
 # Test if the folder path is acceptable:
+
+
 def test_invalid_folder_path():
     invalid_path = "/invalid/nonexistent/folder/path"
     with pytest.raises(FileNotFoundError):
@@ -62,8 +62,8 @@ def test_output_length():
 
 def test_handle_demographic():
     clinical_file_path = os.path.join(
-        "/Users/user/Downloads/hackathon_2025/clinical", "demographic_and_clinical.xlsx"
-    )
+        "/Users/user/Downloads/hackathon_2025/clinical",
+        "demographic_and_clinical.xlsx")
     data_loader = DataLoader(folder_path)
     result_name, result_df = data_loader.handle_demographic(clinical_file_path)
 
@@ -76,7 +76,8 @@ def test_handle_demographic():
 def test_handle_cog():
     # Simulate the contents of the 'first_task_made' DataFrame
     first_task_data = {
-        "ID": ["rn23001", "rn23004", "rn23010"],  # Replace with appropriate IDs
+        # Replace with appropriate IDs
+        "ID": ["rn23001", "rn23004", "rn23010"],
         "CONDITION": ["stop_it", "tap_it", "tap_it"],  # Example conditions
     }
     first_task_df = pd.DataFrame(first_task_data)
@@ -85,8 +86,8 @@ def test_handle_cog():
     data_loader.first_task_made = first_task_df
 
     cog_file_path = os.path.join(
-        "/Users/user/Downloads/hackathon_2025/tasks", "stop_it_with_code_book.xlsx"
-    )
+        "/Users/user/Downloads/hackathon_2025/tasks",
+        "stop_it_with_code_book.xlsx")
     result_name, result_df = data_loader.handle_cog(cog_file_path)
 
     assert result_name == "stop_it"
