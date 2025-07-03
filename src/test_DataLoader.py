@@ -8,22 +8,25 @@ from pathlib import Path
 import os
 from unittest.mock import patch, mock_open
 
-
-# def test_data_loader():
-#     data_loader_instance = DataLoader(folder_path)
-#     df_dict, feature_map = data_loader_instance.get_dataframe()
-#     return df_dict
-
-def run_tests():
-    # Manually call the tests or use pytest
-    pytest.main()
-
 # Test if the folder path is acceptable:
 def test_invalid_folder_path():
     invalid_path = "/invalid/nonexistent/folder/path"
     with pytest.raises(FileNotFoundError):
         DataLoader(invalid_path)
 
+def test_file_instead_folder():
+    invalid_path = "/Users/user/Documents/2nd_Degree/Courses/Python/parse_subject_names.ipynb"
+    with pytest.raises(FileNotFoundError):
+        DataLoader(invalid_path)
+
+def test_empty_input_folder_returns_empty():
+    empty_folder_path = "/Users/user/Documents/2nd_Degree/Courses/Python/empty_folder"
+    data_loader = DataLoader(empty_folder_path)
+    
+    df_dict, feature_map = data_loader.get_dataframe()
+    
+    assert df_dict == {}, "Expected empty dictionary for df_dict"
+    assert feature_map == {}, "Expected empty dictionary for feature_map"
 
 
 def test_initialization():
@@ -97,10 +100,12 @@ def test_filter_participants_in_physio():
     filtered_df = data_loader.filter_participants_in_physio(df, 2, "removed_physio_test.txt")
     assert filtered_df.shape[0] == 2
 
-#test handle_cog for sheet number - if the file only has one sheet. 
-#test to check if the function still works if it gets a file with one sheet only/less than 4.
+def test_gets_measurement_name_without_prefix():
+    file_name = "/path/to/HR.xlsx"
+    result = DataLoader.gets_measurement_name(file_name)
+    assert result == "HR"
 
-if __name__ == "__main__":
-    # test_data_loader()
-    print("Running tests...")
-    run_tests()
+
+
+if __name__ == "__main__": # pragma: no cover
+    pytest.main()

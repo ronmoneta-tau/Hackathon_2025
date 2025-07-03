@@ -24,12 +24,12 @@ class DataLoader:
             The path to the root directory containing the data files.
         """
         self.input_folder = Path(input_folder)
-        if not self.input_folder.exists():
-            raise FileNotFoundError(f"Input folder does not exist: {self.input_folder}")
-        #if not self.input_folder.exists() or not self.input_folder.is_dir():
-         #   raise FileNotFoundError(f"Input folder does not exist or is not a directory: {self.input_folder}")
+        # if not self.input_folder.exists():
+        #     raise FileNotFoundError(f"Input folder does not exist: {self.input_folder}")
+        if not self.input_folder.exists() or not self.input_folder.is_dir():
+           raise FileNotFoundError(f"Input folder does not exist or is not a directory: {self.input_folder}")
         self.first_task_made = None
-        self.feature_map = None
+        self.feature_map = {}
         self.clinic_data = {}  # do we need?
         self.task_data = {}  # do we need?
         self.physio_data = {}  # do we need?
