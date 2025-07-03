@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from metrics_enum import Metrics
@@ -63,28 +64,8 @@ class DataLoader:
             item_path = os.path.join(self.input_folder, item)
             if os.path.isfile(item_path) and item.lower().endswith((".xls", ".xlsx")):
                 self.first_task_made = pd.read_excel(item_path)
-            # elif os.path.isfile(item_path) and item.lower().endswith((".csv")):
-            #     feature_df = pd.read_csv(
-            #         item_path, header=None
-            #     )  # Read CSV without header
-            #     self.feature_map = pd.Series(
-            #         feature_df[1].values, index=feature_df[0].values
-            #     ).to_dict()
             elif os.path.isfile(item_path) and item.lower().endswith((".csv")):
-                feature_df = pd.read_csv(item_path, header=None)
-
-                # Define allowed measure types
-                valid_measures = {m.value for m in Metrics}
-
-                # Replace undefined values with 'linear'
-                feature_df[1] = feature_df[1].apply(
-                    lambda x: x if x in valid_measures else "linear"
-                )
-
-                # Create the feature_map dictionary
-                self.feature_map = pd.Series(
-                    feature_df[1].values, index=feature_df[0].values
-                ).to_dict()
+                self.feature_map = self.set_up_feature_map(item_path)
 
         for entry in os.listdir(self.input_folder):
             full_path = os.path.join(self.input_folder, entry)
@@ -97,6 +78,26 @@ class DataLoader:
                     df_dict[name] = df
 
         return df_dict, self.feature_map
+
+    def set_up_feature_map(self, csv_path):
+        """
+        Reads a CSV file to create a feature mapping dictionary.
+        :param csv_path: path to the CSV file containing feature names and their types.
+        :return: dict of feature names mapped to their types.
+        """
+
+        feature_df = pd.read_csv(csv_path, header=None)
+
+        # Define allowed measure types
+        valid_measures = {m.value for m in Metrics}
+
+        # Replace undefined values with 'linear'
+        feature_df[1] = feature_df[1].apply(
+            lambda x: x if x in valid_measures else "linear"
+        )
+
+        # Create the feature_map dictionary
+        return pd.Series(feature_df[1].values, index=feature_df[0].values).to_dict()
 
     def handle_demographic(self, file_name):
         """
@@ -118,7 +119,19 @@ class DataLoader:
             - pandas.DataFrame: The processed clinical data.
         """
         df = pd.read_excel(file_name, header=[0, 1])
+
+        # Replace non-numeric placeholders
+        df = df.replace(["-", "not specified", "", " "], -1)
+
+        # Try converting columns to float if possible
+        for col in df.columns:
+            try:
+                df[col] = pd.to_numeric(df[col], errors="raise").astype(float)
+            except (ValueError, TypeError):
+                continue  # Leave non-numeric columns as-is
+
         df = self.flatten_df(df)
+
         return "clinical", df
 
     @staticmethod
@@ -170,6 +183,7 @@ class DataLoader:
         excel_file = pd.ExcelFile(file_name)
         sheet_names = excel_file.sheet_names
         df = pd.read_excel(file_name, sheet_name=sheet_names[0])
+        df = df.replace(" ", np.nan)
         df.rename(columns={df.columns[0]: "ID"}, inplace=True)
         name = self.gets_task_name(file_name)
         df = self.map_condition_column(df, name)
