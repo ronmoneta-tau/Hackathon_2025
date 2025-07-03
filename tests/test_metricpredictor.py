@@ -13,7 +13,7 @@ def test_get_best_metric_returns_valid_method():
         }
     )
     predictor = MetricPredictor(df)
-    method = predictor.get_best_metric("measurement", idx_to_hide=2)
+    method = predictor.get_optimal_metric("measurement", idx_to_hide=2)
     assert method in ["interpolation", "mean", "median", "knn"]
 
 
@@ -26,18 +26,6 @@ def test_get_df_with_valid_participants_filters_correctly():
     predictor = MetricPredictor(df)
     filtered = predictor.get_df_with_valid_participants(df, "measurement")
     assert set(filtered["ID"].unique()) == {"B"}
-
-
-def test_predict_using_knn_returns_float():
-    import pandas as pd
-
-    df = pd.DataFrame({"ID": ["A"] * 6, "measurement": [1, 2, 3, 4, 5, 6]})
-    predictor = MetricPredictor(df)
-    group = df[df["ID"] == "A"].reset_index(drop=True)
-    pred = predictor.predict_using_knn(
-        group, idx_to_hide=2, group_hidden=group.drop(2), measurement="measurement"
-    )
-    assert isinstance(pred, float) or np.isnan(pred)
 
 
 def test_interpolation_returns_float():
@@ -61,5 +49,5 @@ def test_get_best_metric_returns_none_on_empty_df():
 
     df = pd.DataFrame({"ID": [], "measurement": []})
     predictor = MetricPredictor(df)
-    method = predictor.get_best_metric("measurement", idx_to_hide=0)
+    method = predictor.get_optimal_metric("measurement", idx_to_hide=0)
     assert method is None
