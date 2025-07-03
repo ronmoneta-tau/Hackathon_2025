@@ -1,9 +1,9 @@
-
 import numpy as np
+from scipy.interpolate import interp1d
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import KNeighborsRegressor
-from scipy.interpolate import interp1d
-from src.mertices_enum import Metrics
+
+from src.metrics_enum import Metrics
 
 
 class MetricPredictor:
@@ -14,7 +14,9 @@ class MetricPredictor:
     def get_best_metric_dict(self, measurements):
         metric_dict = {}
         for measurement in measurements:
-            metric_dict[measurement] = self.get_best_metric_dict_for_measurement(measurement)
+            metric_dict[measurement] = self.get_best_metric_dict_for_measurement(
+                measurement
+            )
         return metric_dict
 
     def get_best_metric_dict_for_measurement(self, measurement):
@@ -39,17 +41,21 @@ class MetricPredictor:
         preds_median = []
         preds_knn = []
 
-        for participant_id, group in df.groupby('ID'):
+        for participant_id, group in df.groupby("ID"):
             # for idx_to_hide in group.index:
             group = group.reset_index(drop=True)
             group_hidden = group.drop(index=idx_to_hide)
             actual = group.loc[idx_to_hide, measurement]
 
             for kind in (k.value for k in Metrics):
-                interpolated = self.interpolate(group_hidden, measurement, group, idx_to_hide, kind)
+                interpolated = self.interpolate(
+                    group_hidden, measurement, group, idx_to_hide, kind
+                )
                 preds_by_kind[kind].append(interpolated)
 
-            mean_pred, median_pred, knn_pred = self.get_pred_for_id(group, group_hidden, idx_to_hide, measurement)
+            mean_pred, median_pred, knn_pred = self.get_pred_for_id(
+                group, group_hidden, idx_to_hide, measurement
+            )
 
             actual_values.append(actual)
             # preds_interpolation.append(interpolated)
@@ -57,7 +63,12 @@ class MetricPredictor:
             preds_median.append(median_pred)
             preds_knn.append(knn_pred)
 
-        all_methods = {**preds_by_kind, "mean": preds_mean, "median": preds_median, "knn": preds_knn}
+        all_methods = {
+            **preds_by_kind,
+            "mean": preds_mean,
+            "median": preds_median,
+            "knn": preds_knn,
+        }
         best_method = self.evaluate_method_accuracy(all_methods, actual_values)
         return best_method
 
@@ -72,18 +83,17 @@ class MetricPredictor:
     def get_max_num(self, measurement):
         df = self.df.copy()
         df = df.dropna(subset=[measurement])
-        counts = df['ID'].value_counts()
+        counts = df["ID"].value_counts()
         return counts.max()
-
 
     @staticmethod
     def get_df_with_valid_participants(df, measurement):
         # Filter IDs with at least 6 measurements
         df = df.dropna(subset=[measurement])
-        counts = df['ID'].value_counts()
+        counts = df["ID"].value_counts()
         max_count = counts.max()
         valid_ids = counts[counts >= max_count].index
-        return df[df['ID'].isin(valid_ids)]
+        return df[df["ID"].isin(valid_ids)]
 
     @staticmethod
     def predict_using_knn(group, idx_to_hide, group_hidden, measurement):
