@@ -24,6 +24,10 @@ class DataLoader:
             The path to the root directory containing the data files.
         """
         self.input_folder = Path(input_folder)
+        if not self.input_folder.exists():
+            raise FileNotFoundError(f"Input folder does not exist: {self.input_folder}")
+        #if not self.input_folder.exists() or not self.input_folder.is_dir():
+         #   raise FileNotFoundError(f"Input folder does not exist or is not a directory: {self.input_folder}")
         self.first_task_made = None
         self.feature_map = None
         self.clinic_data = {}  # do we need?
@@ -214,7 +218,7 @@ class DataLoader:
         str
             The extracted task name.
         """
-        base_name = file_name.split("/")[-1]
+        base_name = Path(file_name).stem
         return base_name.split("_with_code_book")[0]
 
     def handle_physio(self, file_name):
@@ -284,7 +288,7 @@ class DataLoader:
         valid_participants = counts[counts == num].index
         removed_participants = counts[counts != num].index.tolist()
         filtered_df = df[df[participant_col].isin(valid_participants)].copy()
-        csv_path = os.path.join(self.input_folder, file_name)
+        csv_path = Path(self.input_folder) / file_name
         pd.DataFrame(removed_participants, columns=[participant_col]).to_csv(
             csv_path, index=False
         )
@@ -309,6 +313,7 @@ class DataLoader:
         str
             The extracted measurement name in uppercase.
         """
-        base_name = file_name.split("/")[-1]
-        base_name = base_name.replace("statistics_", "").upper()
-        return base_name.split(".")[0]
+        base_name = Path(file_name).stem
+        if base_name.startswith("statistics_"):
+            return base_name.replace("statistics_", "").upper()
+        return base_name.upper()

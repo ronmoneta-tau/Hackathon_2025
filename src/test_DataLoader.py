@@ -18,6 +18,13 @@ def run_tests():
     # Manually call the tests or use pytest
     pytest.main()
 
+# Test if the folder path is acceptable:
+def test_invalid_folder_path():
+    invalid_path = "/invalid/nonexistent/folder/path"
+    with pytest.raises(FileNotFoundError):
+        DataLoader(invalid_path)
+
+
 
 def test_initialization():
     data_loader = DataLoader(folder_path)
@@ -89,6 +96,9 @@ def test_filter_participants_in_physio():
     df = pd.DataFrame({"ID": [1, 2, 2, 3, 4], "value": [10, 20, 20, 30, 40]})
     filtered_df = data_loader.filter_participants_in_physio(df, 2, "removed_physio_test.txt")
     assert filtered_df.shape[0] == 2
+
+#test handle_cog for sheet number - if the file only has one sheet. 
+#test to check if the function still works if it gets a file with one sheet only/less than 4.
 
 if __name__ == "__main__":
     # test_data_loader()
