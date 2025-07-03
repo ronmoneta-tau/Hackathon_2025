@@ -2,7 +2,10 @@ pandas
 numpy
 matplotlib
 pytest
-flake8
 black
 isort
 coverage
+scipy
+pathlib
+openpyxl
+scikit-learn
