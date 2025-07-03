@@ -11,6 +11,8 @@ class InterpolationStrategy(ABC):
     Strategy interface for interpolation.
     """
 
+    kinds = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous', 'next'}
+
     @abstractmethod
     def interpolate(self, x: np.ndarray, y: np.ndarray, new_x: np.ndarray) -> np.ndarray:
         pass
@@ -46,13 +48,12 @@ class QuartileClipper:
     def compute_quartiles(self, impute_feature: str) -> None:
         self.quartiles = self.df.groupby(self.quartile_feature)[impute_feature].quantile([0.25, 0.75]).unstack()
 
-    def clip(self, df: pd.DataFrame, interpolated_values: np.ndarray, nan_masks: pd.Series) -> np.ndarray:
-        clipped_values = interpolated_values.copy()
+    def clip(self, df: pd.DataFrame, generated_values: np.ndarray, nan_masks: pd.Series) -> np.ndarray:
+        clipped_values = generated_values.copy()
         data_by_quartile_feature = df[self.quartile_feature]
         lower = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.25])
         upper = data_by_quartile_feature.map(lambda t: self.quartiles.loc[t, 0.75])
-        clipped_values[nan_masks] = np.clip(interpolated_values[nan_masks], lower.values[nan_masks],
-                                            upper.values[nan_masks])
+        clipped_values[nan_masks] = np.clip(generated_values[nan_masks], lower.values[nan_masks], upper.values[nan_masks])
         return clipped_values
 
 
@@ -65,7 +66,23 @@ class FeatureImputer:
         self.df = df
         self.feature = feature
         self.method = method
-        self.interpolator = interpolator_cls(kind=method)
+        self.interpolator_cls = interpolator_cls
+        if self.method in InterpolationStrategy.kinds:
+            self.generation_function = self.interpolation_generation
+        elif self.method == 'median':
+            self.generation_function = self.median_generation
+        else:
+            raise ValueError(f"Unsupported imputation method: {self.method}")
+
+    def median_generation(self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series) -> np.ndarray:
+        median_value = values.median()
+        return np.array(values.fillna(median_value))
+
+    def interpolation_generation(self, idx: pd.Index, values: pd.Series, valid_mask: pd.Series) -> np.ndarray:
+        x = idx[valid_mask]
+        y = values[valid_mask]
+        interpolator = self.interpolator_cls(kind=self.method)
+        return interpolator.interpolate(x, y, idx)
 
     def impute(self) -> pd.Series:
         quartile_clipper = QuartileClipper(self.df)
@@ -75,13 +92,9 @@ class FeatureImputer:
         for _, group in self.df.groupby('SDAN'):
             idx = group.index
             values = group[self.feature]
-
             valid_mask = ~group[self.feature].isna()
-            x = idx[valid_mask]
-            y = values[valid_mask]
-
-            interpolated_values = self.interpolator.interpolate(x, y, idx)
-            clipped_values = quartile_clipper.clip(group, interpolated_values, ~valid_mask)
+            generated_values = self.generation_function(idx, values, valid_mask)
+            clipped_values = quartile_clipper.clip(group, generated_values, ~valid_mask)
             feature_series.iloc[idx] = clipped_values
 
         return feature_series
