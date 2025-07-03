@@ -28,7 +28,8 @@ def test_file_instead_folder():
 
 def test_empty_input_folder_returns_empty():
     empty_folder_path = (
-        "/Users/user/Documents/2nd_Degree/Courses/Python/empty_folder"
+        "/Users/user/Documents/2nd_Degree/"
+        "Courses/Python/empty_folder"
     )
     data_loader = DataLoader(empty_folder_path)
 
@@ -66,7 +67,8 @@ def test_output_length():
 def test_handle_demographic():
     clinical_file_path = os.path.join(
         "/Users/user/Downloads/hackathon_2025/clinical",
-        "demographic_and_clinical.xlsx")
+        "demographic_and_clinical.xlsx"
+    )
     data_loader = DataLoader(folder_path)
     result_name, result_df = data_loader.handle_demographic(clinical_file_path)
 
@@ -90,7 +92,8 @@ def test_handle_cog():
 
     cog_file_path = os.path.join(
         "/Users/user/Downloads/hackathon_2025/tasks",
-        "stop_it_with_code_book.xlsx")
+        "stop_it_with_code_book.xlsx"
+    )
     result_name, result_df = data_loader.handle_cog(cog_file_path)
 
     assert result_name == "stop_it"
