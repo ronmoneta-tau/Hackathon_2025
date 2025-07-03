@@ -8,8 +8,8 @@ class DataLoader:
     """
     Base class that gets a path to a folder for use.
 
-    This class generates dictionaries of the relevant files per folder (categorizes them based
-    on folder location).
+    This class generates dictionaries of the relevant files per folder
+    (categorizes them based on folder location).
 
     """
 
@@ -25,8 +25,9 @@ class DataLoader:
         self.input_folder = Path(input_folder)
         if not self.input_folder.exists() or not self.input_folder.is_dir():
             raise FileNotFoundError(
-                f"Input folder does not exist or is not a directory: {self.input_folder}"
-            )
+                f"Input folder does not exist or is not a directory:\n"
+                f"{self.input_folder}"
+                )
         self.first_task_made = None
         self.feature_map = {}
 
@@ -34,16 +35,17 @@ class DataLoader:
         """
         Loads all relevant data files from the input folder.
 
-        Identifies Excel and CSV files in the root directory and processes them accordingly.
-        Then moves to subdirectories ('clinical', 'tasks', 'physio'), delegating to handler
-        functions for each file type.
+        Identifies Excel and CSV files in the root directory and processes
+        them accordingly. Then moves to subdirectories ('clinical',
+        'tasks', 'physio'), delegating to handler functions for each
+        file type.
 
         Returns
         -------
         tuple
             A tuple containing:
-            - dict: Mapping of dataset names to their corresponding pandas DataFrames.
-            - dict: Feature mapping dictionary created from the CSV file (if found).
+            - dict: Map of dataset names to their corresponding DataFrames.
+            - dict: Feature mapping dictionary created from the CSV file.
         """
         df_dict = {}
         # Walk through the folder
@@ -106,7 +108,8 @@ class DataLoader:
     @staticmethod
     def flatten_df(df):
         """
-        Flattens a MultiIndex DataFrame by merging multi-level column headers into single strings.
+        Flattens a MultiIndex DataFrame by merging multi-level column
+        headers into single strings.
 
         Parameters
         ----------
@@ -158,9 +161,11 @@ class DataLoader:
 
     def map_condition_column(self, df_target, target):
         """
-        Adds a 'CONDITION' column to a DataFrame based on the first task performed by each participant.
+        Adds a 'CONDITION' column to a DataFrame based on the first task
+        performed by each participant.
 
-        Maps the current task name to 'First' or 'Second' by comparing it with previously loaded task metadata.
+        Maps the current task name to 'First' or 'Second' by comparing it
+        with previously loaded task metadata.
 
         Parameters
         ----------
@@ -176,7 +181,7 @@ class DataLoader:
             A copy of the input DataFrame with a new 'CONDITION' column.
         """
         condition_col = "CONDITION"
-        participant_col = "ID"  # Update this if your ID column has a different name
+        participant_col = "ID"  # Might need manual check.
         cond_map = self.first_task_made[
             [participant_col, condition_col]
         ].drop_duplicates()
@@ -226,7 +231,7 @@ class DataLoader:
         tuple
             A tuple of:
             - str: Name of the physiological measurement.
-            - pandas.DataFrame: Filtered DataFrame containing valid participant data.
+            - pandas.DataFrame: Filtered DataFrame with valid participant data.
         """
         df_list = []
         excel_file = pd.ExcelFile(file_name)
@@ -249,7 +254,7 @@ class DataLoader:
     def filter_participants_in_physio(
             self, df, num, file_name, participant_col="ID"):
         """
-        Filters out participants who do not have complete data across all sheets.
+        Filters out participants who do not have all data across all sheets.
 
         Also saves the list of removed participants to a text file.
 
@@ -259,7 +264,7 @@ class DataLoader:
             The combined DataFrame of all physio sheets.
 
         num : int
-            The expected number of entries per participant (i.e., number of sheets).
+            The expected number of entries per participant (number of sheets).
 
         file_name : str
             Name for the file to store excluded participants.

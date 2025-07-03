@@ -19,14 +19,17 @@ def test_invalid_folder_path():
 
 def test_file_instead_folder():
     invalid_path = (
-        "/Users/user/Documents/2nd_Degree/Courses/Python/parse_subject_names.ipynb"
+        "/Users/user/Documents/2nd_Degree/Courses/"
+        "Python/parse_subject_names.ipynb"
     )
     with pytest.raises(FileNotFoundError):
         DataLoader(invalid_path)
 
 
 def test_empty_input_folder_returns_empty():
-    empty_folder_path = "/Users/user/Documents/2nd_Degree/Courses/Python/empty_folder"
+    empty_folder_path = (
+        "/Users/user/Documents/2nd_Degree/Courses/Python/empty_folder"
+    )
     data_loader = DataLoader(empty_folder_path)
 
     df_dict, feature_map = data_loader.get_dataframe()
