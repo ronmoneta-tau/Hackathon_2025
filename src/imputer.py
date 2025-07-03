@@ -4,9 +4,15 @@ from typing import Dict, Any
 import pandas as pd
 from scipy.interpolate import interp1d
 import numpy as np
+from scipy.stats import zscore
 
 FEATURE_BREAKDOWNS = {"SSRT": ['Median Go RT', 'Average SSD'],
-                      'Post Go Error Efficiency': ['Post Go Error Go % Accuracy', 'Post Go Error Go RT']}
+                      'Post Go Error Efficiency': ['Post Go Error Go % Accuracy', 'Post Go Error Go RT'],
+                      "D’context": ["Z (AX CorrectRate)", "Z(BX IncorrectRate)"],
+                      "A-cue bias": ["Z (AX CorrectRate)", "Z(AY IncorrectRate)"],
+                      "PBI_composite": ["PBI_error", "PBI_rt"],
+                      "PBI_error": ["AY IncorrectRate adjusted", "BX IncorrectRate adjusted"],
+                      "PBI_rt": ["AY Correct Mean RT", "BX Correct Mean RT"], }
 
 
 class InterpolationStrategy(ABC):
@@ -135,12 +141,20 @@ class DataImputer:
                 continue
 
             feature_blocks = self.feature_breakdowns[feature] if feature in self.feature_breakdowns else [feature]
+            if "PBI_error" in feature_blocks:
+                feature_blocks.extend(self.feature_breakdowns["PBI_error"])
+            if "PBI_rt" in feature_blocks:
+                feature_blocks.extend(self.feature_breakdowns["PBI_rt"])
+
+            feature_blocks = set([fb for fb in feature_blocks if fb != "PBI_error" and fb != "PBI_rt"])
+
             for block in feature_blocks:
                 self.data = self.impute(block, method)
 
             if len(feature_blocks) > 1:  # incase this is a composite feature
                 self.logger.info(f"Creating feature '{feature}' using the imputed features.")
-                builder = getattr(self, f'build_{feature.lower().replace(" ","_")}')  # TODO: Fix exactly by column name
+                common_feature_name = ''.join(c if c.isalpha() else '_' for c in feature.lower())
+                builder = getattr(self, f'build_{common_feature_name}')
                 self.data = builder()
 
         return self.data
@@ -159,7 +173,63 @@ class DataImputer:
         Builds the missing Post Go Error Efficiency points from its components by the formula SSRT = Post Go Error go % Accuracy / Post Go Error GO RT.
         """
         nan_mask = self.data['Post Go Error Efficiency'].isna()
-        self.data.loc[nan_mask, 'Post Go Error Efficiency'] = self.data.loc[nan_mask, 'Post Go Error Go % Accuracy'] / self.data.loc[
-            nan_mask, 'Post Go Error Go RT']
+        self.data.loc[nan_mask, 'Post Go Error Efficiency'] = self.data.loc[nan_mask, 'Post Go Error Go % Accuracy'] / \
+                                                              self.data.loc[
+                                                                  nan_mask, 'Post Go Error Go RT']
+
+        return self.data
+
+    def build_d_context(self):
+        """
+        Builds the missing D'context points from its components by the formula D'context = Z(AX CorrectRate) - Z(BX IncorrectRate)
+        """
+        nan_mask = self.data["D’context"].isna()
+        self.data.loc[nan_mask, "D’context"] = self.data.loc[nan_mask, "Z (AX CorrectRate)"] / self.data.loc[
+            nan_mask, "Z(BX IncorrectRate)"]
+
+        return self.data
+
+    def build_a_cue_bias(self):
+        """
+        Builds the missing A-cue bias points from its components by the formula A-cue bias = 1/2 * Z(Hit RateAX) + Z(False AlarmsAY)
+        """
+        nan_mask = self.data["A-cue bias"].isna()
+        self.data.loc[nan_mask, "A-cue bias"] = 0.5 * (self.data.loc[nan_mask, "Z (AX CorrectRate)"] + self.data.loc[
+            nan_mask, "Z(AY IncorrectRate)"])
+
+        return self.data
+
+    def build_PBI_error(self):
+        """
+        Builds the missing PBI_error points from its components by the formula PBI_error = (Error Rate AY - Error Rate BX) / (Error Rate AY + Error Rate BX)
+        """
+        nan_mask = self.data["PBI_error"].isna()
+        self.data.loc[nan_mask, "PBI_error"] = (self.data.loc[nan_mask, "AY IncorrectRate adjusted"] - self.data.loc[
+            nan_mask, "BX IncorrectRate adjusted"]) / (self.data.loc[nan_mask, "AY IncorrectRate adjusted"] +
+                                                       self.data.loc[nan_mask, "BX IncorrectRate adjusted"])
+
+        return self.data
+
+    def build_PBI_rt(self):
+        """
+        Builds the missing PBI_rt points from its components by the formula PBI_rt = (Mean RT AY - Mean RT BX) / (Mean RT AY + Mean RT BX)
+        """
+        nan_mask = self.data["PBI_rt"].isna()
+        self.data.loc[nan_mask, "PBI_rt"] = (self.data.loc[nan_mask, "AY Correct Mean RT"] - self.data.loc[
+            nan_mask, "BX Correct Mean RT"]) / (self.data.loc[nan_mask, "AY Correct Mean RT"] +
+                                                self.data.loc[nan_mask, "BX Correct Mean RT"])
+
+        return self.data
+
+    def build_pbi_composite(self):
+        """
+        Builds the missing PBI_composite points from its components by the formula PBI_composite = mean(z(PBI_error), z(PBI_rt))
+        """
+        self.data = self.build_PBI_error()
+        self.data = self.build_PBI_rt()
+
+        nan_mask = self.data["PBI_composite"].isna()
+        self.data.loc[nan_mask, "PBI_composite"] = np.mean([zscore(self.data.loc[nan_mask, "PBI_error"]),
+                                                            zscore(self.data.loc[nan_mask, "PBI_rt"])], axis=0)
 
         return self.data
